@@ -1,0 +1,104 @@
+ name: Upload templated master config file
+  template:
+    src: "internal-etcd/kubeadm-config.yaml.j2"
+    dest: "~/kubeadm-config.yaml"
+
+- name: Initialize cluster with kubeadm
+  command: "kubeadm init --config ~/kubeadm-config.yaml"
+
+- name: Create temporary directory for required files
+  tempfile:
+    state: directory
+    suffix: pki
+  register: required_files_temp_dir_int_etcd
+
+- name: Copy required cluster certificate files to local
+  fetch:
+    src: "/etc/kubernetes/pki/{{ item }}"
+    dest: "{{ required_files_temp_dir_int_etcd.path }}/pki/"
+    flat: yes
+  with_items:
+  - "ca.crt"
+  - "ca.key"
+  - "sa.key"
+  - "sa.pub"
+  - "front-proxy-ca.crt"
+  - "front-proxy-ca.key"
+
+- name: Copy required etcd certificate files to local
+  fetch:
+    src: "/etc/kubernetes/pki/etcd/{{ item }}"
+    dest: "{{ required_files_temp_dir_int_etcd.path }}/pki/etcd/"
+    flat: yes
+  with_items:
+  - "ca.crt"
+  - "ca.key"
+
+- name: Copy admin configuration file to local
+  fetch:
+    src: "/etc/kubernetes/admin.conf"
+    dest: "{{ required_files_temp_dir_int_etcd.path }}/"
+    flat: yes
+
+- name: Create Pod Security Policy Resources
+  shell:
+    cmd: |
+      cat <<EOF | kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f -
+      {{ lookup('file', item) }}
+      EOF
+  with_fileglob:
+    - "./psp/*.yaml"
+
+- name: Create secrets required by Cilium
+  command: >
+    kubectl --kubeconfig=/etc/kubernetes/admin.conf \
+    create secret generic -n kube-system cilium-etcd-secrets \
+    --from-file=etcd-ca=/etc/kubernetes/pki/etcd/ca.crt \
+    --from-file=etcd-client-key=/etc/kubernetes/pki/etcd/peer.key \
+    --from-file=etcd-client-crt=/etc/kubernetes/pki/etcd/peer.crt
+
+- name: Send CNI k8s resources to the master node
+  template:
+    src: "internal-etcd/cilium.yaml.j2"
+    dest: "~/cilium.yaml"
+
+- name: Apply CNI layer
+  command: "kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f ~/cilium.yaml"
+
+# MetalLB Resources
+
+- name: Upload MetalLB resources file
+  copy:
+    src: "metallb.yaml"
+    dest: "~/metallb.yaml"
+
+- name: Apply MetalLB
+  command: "kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f ~/metallb.yaml"
+
+- name: Delete uploaded MetalLB resources file
+  file:
+    state: absent
+    path: "~/metallb.yaml"
+
+# MetalLB ConfigMap
+
+- name: Upload templated MetalLB BGP ConfigMap file
+  template:
+    src: "metallb-bgp-configmap.yaml.j2"
+    dest: "~/metallb-bgp-configmap.yaml"
+
+- name: Apply MetalLB BGP ConfigMap
+  command: "kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f ~/metallb-bgp-configmap.yaml"
+
+- name: Delete uploaded MetalLB BGP ConfigMap file
+  file:
+    state: absent
+    path: "~/metallb-bgp-configmap.yaml"
+
+- name: Clear uploaded config files
+  file:
+    state: absent
+    path: "{{ item }}"
+  with_items:
+  - "~/kubeadm-config.yaml"
+  - "~/cilium.yaml"

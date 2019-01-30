@@ -1,0 +1,62 @@
+- name: Copy required certificate files to additional master
+  copy:
+    src: "{{ hostvars[groups['k8s-initial-master-node'][0]].required_files_temp_dir_int_etcd.path }}/"
+    dest: "/etc/kubernetes/"
+
+- name: Upload templated additional master config file
+  template:
+    src: "internal-etcd/kubeadm-config.yaml.j2"
+    dest: "~/kubeadm-config.yaml"
+
+- name: Prepare kubeadm phase 1
+  command: "kubeadm alpha phase certs all --config ~/kubeadm-config.yaml"
+
+- name: Prepare kubeadm phase 2
+  command: "kubeadm alpha phase kubelet config write-to-disk --config ~/kubeadm-config.yaml"
+
+- name: Prepare kubeadm phase 3
+  command: "kubeadm alpha phase kubelet write-env-file --config ~/kubeadm-config.yaml"
+
+- name: Prepare kubeadm phase 4
+  command: "kubeadm alpha phase kubeconfig kubelet --config ~/kubeadm-config.yaml"
+
+- name: Restart Kubelet service
+  systemd:
+    state: restarted
+    name: kubelet
+
+- name: Add additional master to the etcd cluster
+  command: >
+    kubectl --kubeconfig=/etc/kubernetes/admin.conf exec -n kube-system
+    etcd-{{ hostvars[groups['k8s-initial-master-node'][0]].ansible_hostname }} -- etcdctl
+    --ca-file /etc/kubernetes/pki/etcd/ca.crt
+    --cert-file /etc/kubernetes/pki/etcd/peer.crt
+    --key-file /etc/kubernetes/pki/etcd/peer.key
+    --endpoints=https://{{ hostvars[groups['k8s-initial-master-node'][0]].ansible_default_ipv4.address }}:2379
+    member add {{ ansible_hostname }} https://{{ ansible_default_ipv4.address }}:2380
+  retries: 10
+  delay: 10
+  register: result
+  until: result.rc == 0
+
+- name: Prepare kubeadm phase 5
+  command: "kubeadm alpha phase etcd local --config ~/kubeadm-config.yaml"
+
+- name: Prepare kubeadm phase 6
+  command: "kubeadm alpha phase kubeconfig all --config ~/kubeadm-config.yaml"
+
+- name: Prepare kubeadm phase 7
+  command: "kubeadm alpha phase controlplane all --config ~/kubeadm-config.yaml"
+
+- name: Prepare kubeadm phase 8
+  command: "kubeadm alpha phase kubelet config annotate-cri --config ~/kubeadm-config.yaml"
+
+- name: Prepare kubeadm phase 9
+  command: "kubeadm alpha phase mark-master --config ~/kubeadm-config.yaml"
+
+- name: Clear uploaded config files
+  file:
+    state: absent
+    path: "{{ item }}"
+  with_items:
+  - "~/kubeadm-config.yaml"

@@ -1,0 +1,30 @@
+apiVersion: kubeadm.k8s.io/v1alpha3
+kind: ClusterConfiguration
+apiServerExtraArgs:
+  enable-admission-plugins: NodeRestriction,PodSecurityPolicy
+kubernetesVersion: v{{ kubernetes_version }}
+apiServerCertSANs:
+- "{{ hostvars[groups['k8s-apiserver-lb'][0]].lb_ip }}"
+controlPlaneEndpoint: "{{ hostvars[groups['k8s-apiserver-lb'][0]].lb_ip }}:{{ hostvars[groups['k8s-apiserver-lb'][0]].lb_port }}"
+etcd:
+  local:
+    extraArgs:
+      listen-client-urls: "https://127.0.0.1:2379,https://{{ ansible_default_ipv4.address }}:2379"
+      advertise-client-urls: "https://{{ ansible_default_ipv4.address }}:2379"
+      listen-peer-urls: "https://{{ ansible_default_ipv4.address }}:2380"
+      initial-advertise-peer-urls: "https://{{ ansible_default_ipv4.address }}:2380"
+      initial-cluster: "{% for host in groups['k8s-master-node'] %}{% if loop.index <= groups['k8s-master-node'].index(inventory_hostname) + 1 %}{{ hostvars[host].ansible_hostname }}=https://{{ hostvars[host].ansible_default_ipv4.address }}:2380{% if loop.index <= ansible_play_hosts.index(inventory_hostname) + 1 %},{% endif %}{% endif %}{% endfor %}"
+      initial-cluster-state: existing
+    serverCertSANs:
+    - {{ ansible_hostname }}
+    - {{ ansible_default_ipv4.address }}
+    peerCertSANs:
+    - {{ ansible_hostname }}
+    - {{ ansible_default_ipv4.address }}
+networking:
+  podSubnet: "{{ cni_cidr }}"
+---
+apiVersion: kubeadm.k8s.io/v1alpha3
+kind: InitConfiguration
+nodeRegistration:
+  criSocket: /var/run/containerd/containerd.sock

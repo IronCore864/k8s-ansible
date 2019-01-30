@@ -1,0 +1,37 @@
+global_defs {
+    enable_script_security
+}
+
+vrrp_script haproxy-check {
+    user root
+    # might need to fetch killall binary path dynamically. For now, since our distro is fixed, it is not needed.
+    script "/usr/bin/killall -0 haproxy"
+    interval 2
+    weight 20
+}
+
+vrrp_instance haproxy-vip {
+    state BACKUP
+    interface {{ ansible_default_ipv4.interface }}
+    virtual_router_id {{ hostvars[groups['k8s'][0]].final_virtual_router_id }}
+    # will be 100 for the first host, 99 for the 2nd, 98 for the 3rd...
+    priority {{ keepalived_priority }}
+    advert_int 3
+
+    unicast_src_ip {{ ansible_default_ipv4.address }}/{{ ('0.0.0.0/' + ansible_default_ipv4.netmask) | ipaddr('prefix') }}
+    unicast_peer {
+{% for host in groups['k8s-apiserver-lb'] %}
+{% if ansible_default_ipv4.address != hostvars[host].ansible_default_ipv4.address %}
+        {{ hostvars[host].ansible_default_ipv4.address }}/{{ ('0.0.0.0/' + ansible_default_ipv4.netmask) | ipaddr('prefix') }}
+{% endif %}
+{% endfor %}
+    }
+
+    virtual_ipaddress {
+        {{ virtual_ip_address }}/{{ ('0.0.0.0/' + ansible_default_ipv4.netmask) | ipaddr('prefix') }}
+    }
+
+    track_script {
+        haproxy-check weight 20
+    }
+}

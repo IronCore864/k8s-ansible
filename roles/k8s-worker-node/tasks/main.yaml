@@ -1,0 +1,2 @@
+- name: Run join command
+  shell: "{{ hostvars[groups['k8s-initial-master-node'][0]].join_command }}"

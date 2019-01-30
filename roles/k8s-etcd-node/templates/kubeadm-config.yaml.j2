@@ -1,0 +1,23 @@
+apiVersion: kubeadm.k8s.io/v1alpha3
+kind: ClusterConfiguration
+apiServerExtraArgs:
+  enable-admission-plugins: NodeRestriction,PodSecurityPolicy
+etcd:
+  local:
+    extraArgs:
+      advertise-client-urls: "https://{{ ansible_default_ipv4.address }}:2379"
+      listen-client-urls: "https://{{ ansible_default_ipv4.address }}:2379"
+      listen-peer-urls: "https://{{ ansible_default_ipv4.address }}:2380"
+      initial-advertise-peer-urls: "https://{{ ansible_default_ipv4.address }}:2380"
+      initial-cluster: "{% for n in range(0, (groups['k8s-etcd-node'] | length) )  %}{{ play_hosts[n] }}=https://{{ hostvars[play_hosts[n]].ansible_default_ipv4.address }}:2380{%- if not loop.last %},{% endif %}{% endfor %}"
+      initial-cluster-state: new
+      name: {{ inventory_hostname }}
+    serverCertSANs:
+    - {{ ansible_default_ipv4.address }}
+    peerCertSANs:
+    - {{ ansible_default_ipv4.address }}
+---
+apiVersion: kubeadm.k8s.io/v1alpha3
+kind: InitConfiguration
+nodeRegistration:
+  criSocket: /var/run/containerd/containerd.sock

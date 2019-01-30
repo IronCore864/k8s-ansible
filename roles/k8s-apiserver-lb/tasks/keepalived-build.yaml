@@ -1,0 +1,61 @@
+- name: Ensure keepalived is not installed from package manager
+  apt:
+    name: keepalived
+    state: absent
+    purge: yes
+
+- name: Create temp dir for keepalived build
+  tempfile:
+    state: directory
+    prefix: keepalived-
+  register: temp_dir
+
+- name: Download & extract keepalived sources
+  unarchive:
+    src: "https://github.com/acassen/keepalived/archive/{{ keepalived_version }}.tar.gz"
+    dest: "{{ temp_dir.path }}/"
+    remote_src: yes
+    # skip extracting into a directory with same name as .tar.gz
+    extra_opts: [--strip-components=1]
+
+- name: Ensure packages required to build keepalived are installed
+  apt:
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+      - autotools-dev
+      - automake
+      - build-essential
+      - libssl-dev
+      - libnl-3-dev
+      - iptables-dev
+      - libipset-dev
+      - libnfnetlink-dev
+      - libnl-genl-3-dev
+      - libnl-route-3-dev
+
+- name: Prepare keepalived build
+  command: "./build_setup"
+  args:
+    chdir: "{{ temp_dir.path }}"
+
+- name: Configure keepalived build
+  command: "./configure"
+  args:
+    chdir: "{{ temp_dir.path }}"
+
+- name: Compile keepalived
+  command: "make"
+  args:
+    chdir: "{{ temp_dir.path }}"
+
+- name: Install compiled keepalived
+  command: "make install"
+  args:
+    chdir: "{{ temp_dir.path }}"
+
+- name: Delete temp dir used for keepalived build
+  file:
+    path: "{{ temp_dir.path }}/"
+    state: absent

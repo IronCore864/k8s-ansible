@@ -1,0 +1,8 @@
+- name: Get kubernetes config file from master node to local machine
+  hosts: k8s-master-node[0]
+  become: yes
+  tasks:
+  - fetch:
+      src: "/etc/kubernetes/admin.conf"
+      dest: "~/.kube/k8s-config"
+      flat: yes

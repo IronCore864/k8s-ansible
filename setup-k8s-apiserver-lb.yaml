@@ -1,0 +1,25 @@
+- name: Setup apiserver LB
+  hosts: k8s-apiserver-lb
+  pre_tasks:
+  - name: Create k8s group
+    add_host:
+      name: "{{ item }}"
+      groups: k8s
+    with_items:
+    - "{{ groups['k8s-apiserver-lb'] }}"
+    run_once: true
+  - name: If virtual ip should be used, check if it is specified
+    fail:
+      msg: "use_virtual_ip is set to true, but virtual_ip_address is not specified"
+    when: "(use_virtual_ip == true) and (virtual_ip_address is not defined)"
+  - name: Read the virtual router id
+    set_fact:
+      final_virtual_router_id: "{{ virtual_router_id | default(255 | random) }}"
+    run_once: true
+  - name: Log the virtual router id
+    debug:
+      msg: "Will use the virtual router id: {{ hostvars[groups['k8s'][0]].final_virtual_router_id }}"
+    run_once: true
+  become: yes
+  roles:
+  - k8s-apiserver-lb

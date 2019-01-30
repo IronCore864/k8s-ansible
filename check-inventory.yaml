@@ -1,0 +1,52 @@
+- name: Sanity Check for Inventory
+  hosts: localhost
+  tasks:
+    - name: Check if 'k8s-master-node' group exists
+      fail:
+        msg: "There must be defined a group with name 'k8s-master-node'"
+      when: "'k8s-master-node' not in groups"
+
+    - name: Check if 'k8s-worker-node' group exists
+      fail:
+        msg: "There must be defined a group with name 'k8s-worker-node'"
+      when: "'k8s-worker-node' not in groups"
+
+    - name: Check number of master nodes
+      fail:
+        msg: "There must be at least one host under group 'k8s-master-node'"
+      when:
+        groups['k8s-master-node'] | length | int < 1
+
+    - name: Check number of worker nodes
+      fail:
+        msg: "There must be at least one host under group 'k8s-worker-node'"
+      when:
+        groups['k8s-worker-node'] | length | int < 1
+
+    - name: Check if one of the hosts is defined both as master and worker node
+      fail:
+        msg: "Master node \"{{ item[0] }}\" cannot be a worker node"
+      when: item[0] == item[1]
+      with_nested:
+          - "{{ groups['k8s-master-node'] }}"
+          - "{{ groups['k8s-worker-node'] }}"
+
+    - name: Check external etcd nodes
+      fail:
+        msg: "There must be at least one host under group 'k8s-etcd-node' as 'external_etcd' is set to true in inventory"
+      when:
+        "hostvars[groups['k8s-master-node'][0]].external_etcd is defined
+        and hostvars[groups['k8s-master-node'][0]].external_etcd == true
+        and ('k8s-etcd-node' not in groups or groups['k8s-etcd-node'] | length | int < 1)"
+
+    - name: Check if number of master nodes is odd
+      debug:
+        msg: "WARNING: Number of master nodes is even number"
+      when:
+          "'k8s-etcd-node' not in groups and groups['k8s-master-node'] | length | int is divisibleby 2"
+
+    - name: Check if number of etcd nodes is odd
+      debug:
+        msg: "WARNING: Number of etcd nodes is even number"
+      when:
+           "'k8s-etcd-node' in groups and groups['k8s-etcd-node'] | length | int is divisibleby 2"

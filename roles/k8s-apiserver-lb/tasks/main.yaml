@@ -1,0 +1,44 @@
+- name: Enable nonlocal IP binding for virtual IP binding and reload config
+  sysctl:
+    name: net.ipv4.ip_nonlocal_bind
+    value: 1
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: Get public IP
+  ipify_facts:
+  when: use_external_ip == true
+
+- name: Set LB IP
+  set_fact:
+    instance_ip: "{{ ipify_public_ip if use_external_ip else ansible_default_ipv4.address }}"
+
+- name: Set LB IP
+  set_fact:
+    lb_ip: "{{ virtual_ip_address if use_virtual_ip else instance_ip }}"
+
+- name: Update APT cache
+  apt:
+    update_cache: yes
+
+- name: Install HAProxy
+  apt:
+    name: haproxy
+    state: present
+
+- name: Upload templated HAProxy config file
+  template:
+    src: "haproxy.cfg.j2"
+    dest: "/etc/haproxy/haproxy.cfg"
+
+- name: Enable and (re)start HAProxy service
+  systemd:
+    enabled: yes
+    state: restarted
+    daemon_reload: yes
+    name: haproxy
+
+- name: Install and configure keepalived if needed
+  import_tasks: keepalived.yaml
+  when: use_virtual_ip

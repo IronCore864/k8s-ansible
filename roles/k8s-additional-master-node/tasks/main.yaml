@@ -1,0 +1,5 @@
+- import_tasks: external-etcd-tasks.yaml
+  when: external_etcd == true
+
+- import_tasks: internal-etcd-tasks.yaml
+  when: external_etcd != true

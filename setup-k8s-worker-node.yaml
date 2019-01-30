@@ -1,0 +1,6 @@
+- name: Setup kubernetes worker node(s)
+  hosts: k8s-worker-node
+  strategy: free
+  become: yes
+  roles:
+  - k8s-worker-node

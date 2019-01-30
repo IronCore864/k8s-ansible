@@ -1,0 +1,236 @@
+- name: Disable swap
+  command: swapoff -a
+
+- name: Delete swap partitions from fstab
+  mount:
+    path: none
+    fstype: swap
+    state: absent
+
+- name: Add an Apt signing key, uses whichever key is at the URL
+  apt_key:
+    url: https://download.ceph.com/keys/release.asc
+    state: present
+
+- name: Add specified repository into sources list using specified filename.
+  apt_repository:
+    repo: "deb https://download.ceph.com/debian-mimic/ {{ ansible_distribution_release }} main"
+    state: present
+    filename: ceph
+  failed_when: ansible_distribution != 'Ubuntu'
+
+- name: Update the package lists
+  apt:
+    update_cache: yes
+
+- name: Install packages
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - software-properties-common
+  - jq
+  - git
+  - libltdl7
+  - libseccomp2
+  - ceph-common={{ ceph_common_apt_version }}
+
+- name: Load required kernel modules
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  with_items:
+  - br_netfilter
+  - ip_vs_sh
+  - ip_vs
+  - ip_vs_rr
+  - ip_vs_wrr
+  - overlay
+
+- name: Enable automatic loading of required Kernel modules on boot
+  lineinfile:
+    dest: /etc/modules
+    line: '{{ item }}'
+  with_items:
+  - br_netfilter
+  - ip_vs_sh
+  - ip_vs
+  - ip_vs_rr
+  - ip_vs_wrr
+  - overlay
+
+- name: Set sysctl flags
+  sysctl:
+    name: "{{ item }}"
+    value: 1
+    sysctl_set: yes
+    state: present
+    reload: yes
+  with_items:
+  - net.ipv4.ip_forward
+  - net.bridge.bridge-nf-call-iptables
+
+- name: Add GPG keys
+  apt_key:
+    url: "{{ item }}"
+    state: present
+  with_items:
+  - https://packages.cloud.google.com/apt/doc/apt-key.gpg
+
+- name: Add repository
+  apt_repository:
+    repo: "deb {{ item }}"
+    state: present
+  with_items:
+  # Need to use Xenial distribution (it works fine) since there is no Kubernetes tool builds for Ubuntu 18.04 Bionic.
+  - http://apt.kubernetes.io/ kubernetes-xenial main
+
+- name: Prepare to purge Kubernetes packages
+  dpkg_selections:
+    name: "{{ item }}"
+    selection: purge
+  with_items:
+  - kubelet
+  - kubectl
+  - kubeadm
+
+- name: Remove Kubernetes packages to be safe
+  apt:
+    name: "{{ item }}"
+    state: absent
+    purge: yes
+  with_items:
+  - kubelet
+  - kubectl
+  - kubeadm
+  ignore_errors: true
+
+- name: Clean remains of possible previous Kubernetes setup
+  file:
+    state: absent
+    path: "{{ item }}"
+  with_items:
+  - "/var/run/cilium"
+  - "/var/lib/cni"
+  - "/opt/cni"
+  - "/etc/cni"
+  - "/opt/containerd"
+  - "/var/lib/containerd"
+  - "/var/log/containers"
+  - "/var/log/pods"
+  - "/etc/default/kubelet"
+  - "/etc/systemd/system/kubelet.service.d/"
+  - "/var/lib/etcd/"
+  - "/etc/kubernetes/"
+  - "/opt/cni/"
+  - "~/.kube/"
+  - "~/kubeadm-config.yaml"
+  - "/opt/containerd/"
+  - "/etc/systemd/system/containerd.service"
+  - "/var/lib/containerd/"
+
+- name: Mounting the BPF FS
+  copy:
+    src: sys-fs-bpf.mount
+    dest: /etc/systemd/system/sys-fs-bpf.mount
+
+- name: (Re)start and enable BPF mount
+  systemd:
+    name: sys-fs-bpf.mount
+    daemon_reload: yes
+    state: restarted
+    enabled: yes
+
+# @note we shouldn't need this: check https://github.com/kubernetes/kubernetes/issues/57334#issuecomment-427597505
+- name: Install kubernetes-cni
+  apt:
+    name: "kubernetes-cni={{ kubernetes_cni_apt_version }}"
+    state: present
+
+- name: Install packages
+  apt:
+    name: "{{ item }}={{ kubernetes_version }}-00"
+    state: present
+  with_items:
+  - kubelet
+  - kubectl
+  - kubeadm
+
+- name: Clean existing Kubernetes setup
+  command: "kubeadm reset -f --cri-socket=/var/run/containerd/containerd.sock"
+
+- name: Clear iptables rules
+  command: "{{ item }}"
+  with_items:
+    - iptables -F
+    - iptables -t nat -F
+    - iptables -t mangle -F
+    - iptables -X
+
+- name: Stop kubelet service
+  systemd:
+    state: stopped
+    daemon_reload: yes
+    name: kubelet
+
+- name: Clean remains of possible previous Kubernetes setup
+  file:
+    state: absent
+    path: "{{ item }}"
+  with_items:
+  - "/var/lib/kubelet/"
+
+- name: Switch kubelet runtime to containerd
+  copy:
+    content: |
+      KUBELET_EXTRA_ARGS=--runtime-cgroups=/system.slice/containerd.service --container-runtime=remote --runtime-request-timeout=15m --container-runtime-endpoint=unix:///var/run/containerd/containerd.sock
+    dest: /etc/default/kubelet
+
+- name: Download and install containerd
+  unarchive:
+    src: "https://storage.googleapis.com/cri-containerd-release/cri-containerd-{{ containerd_version }}.linux-amd64.tar.gz"
+    dest: /
+    remote_src: yes
+
+- name: Download gVisor runtime binary
+  get_url:
+    # TODO: Replace with a fixed release when there is a release
+    url: https://storage.googleapis.com/gvisor/releases/nightly/latest/runsc
+    dest: /usr/local/bin/runsc
+    mode: a+x
+
+- name: Create containerd config directory
+  file:
+    path: "/etc/containerd/"
+    state: directory
+    recurse: yes
+
+- name: Copy containerd config to remote
+  copy:
+    src: "containerd-config.toml"
+    dest: /etc/containerd/config.toml
+
+- name: Start and enable containerd
+  systemd:
+    enabled: yes
+    state: restarted
+    daemon_reload: yes
+    name: containerd
+
+- name: Restart kubelet service
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    name: kubelet
+
+- name: Put k8s component versions to hold to prevent auto-upgrade
+  dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  with_items:
+  - kubelet
+  - kubectl
+  - kubeadm

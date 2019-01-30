@@ -1,0 +1,5 @@
+- name: Setup initial master
+  hosts: k8s-initial-master-node
+  become: yes
+  roles:
+  - k8s-initial-master-node

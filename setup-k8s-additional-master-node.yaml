@@ -1,0 +1,7 @@
+- name: Setup second master
+  hosts: k8s-additional-master-node
+  # etcd nodes should be added one by one
+  serial: 1
+  become: yes
+  roles:
+  - k8s-additional-master-node

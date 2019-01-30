@@ -1,0 +1,42 @@
+[k8s-apiserver-lb]
+vm1 ansible_ssh_host_private=172.16.1.91 ansible_ssh_host=172.16.1.91 ansible_host=172.16.1.91 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+vm2 ansible_ssh_host_private=172.16.1.87 ansible_ssh_host=172.16.1.87 ansible_host=172.16.1.87 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+vm3 ansible_ssh_host_private=172.16.1.94 ansible_ssh_host=172.16.1.94 ansible_host=172.16.1.94 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+
+[k8s-master-node]
+vm1 ansible_ssh_host_private=172.16.1.91 ansible_ssh_host=172.16.1.91 ansible_host=172.16.1.91 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+vm2 ansible_ssh_host_private=172.16.1.87 ansible_ssh_host=172.16.1.87 ansible_host=172.16.1.87 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+vm3 ansible_ssh_host_private=172.16.1.94 ansible_ssh_host=172.16.1.94 ansible_host=172.16.1.94 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+
+[k8s-worker-node]
+vm4 ansible_ssh_host_private=172.16.1.84 ansible_ssh_host=172.16.1.84 ansible_host=172.16.1.84 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+vm5 ansible_ssh_host_private=172.16.1.106 ansible_ssh_host=172.16.1.106 ansible_host=172.16.1.106 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+vm6 ansible_ssh_host_private=172.16.1.58 ansible_ssh_host=172.16.1.58 ansible_host=172.16.1.58 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+
+# For rbd-provisioner installation
+
+;[ceph-node]
+;vm4 ansible_ssh_host_private=172.16.1.84 ansible_ssh_host=172.16.1.84 ansible_host=172.16.1.84 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+;vm5 ansible_ssh_host_private=172.16.1.106 ansible_ssh_host=172.16.1.106 ansible_host=172.16.1.106 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+;vm6 ansible_ssh_host_private=172.16.1.58 ansible_ssh_host=172.16.1.58 ansible_host=172.16.1.58 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+;
+;[ceph-mon]
+;vm4 ansible_ssh_host_private=172.16.1.84 ansible_ssh_host=172.16.1.84 ansible_host=172.16.1.84 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+;vm5 ansible_ssh_host_private=172.16.1.106 ansible_ssh_host=172.16.1.106 ansible_host=172.16.1.106 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+;vm6 ansible_ssh_host_private=172.16.1.58 ansible_ssh_host=172.16.1.58 ansible_host=172.16.1.58 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+;
+;[ceph-osd]
+;vm4 ansible_ssh_host_private=172.16.1.84 ansible_ssh_host=172.16.1.84 ansible_host=172.16.1.84 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+;vm5 ansible_ssh_host_private=172.16.1.106 ansible_ssh_host=172.16.1.106 ansible_host=172.16.1.106 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+;vm6 ansible_ssh_host_private=172.16.1.58 ansible_ssh_host=172.16.1.58 ansible_host=172.16.1.58 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+;
+;[ceph-mgr]
+;vm4 ansible_ssh_host_private=172.16.1.84 ansible_ssh_host=172.16.1.84 ansible_host=172.16.1.84 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+;vm5 ansible_ssh_host_private=172.16.1.106 ansible_ssh_host=172.16.1.106 ansible_host=172.16.1.106 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+;vm6 ansible_ssh_host_private=172.16.1.58 ansible_ssh_host=172.16.1.58 ansible_host=172.16.1.58 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+;
+;[ceph-admin]
+;vm1 ansible_ssh_host_private=172.16.1.91 ansible_ssh_host=172.16.1.91 ansible_host=172.16.1.91 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3
+;
+;[ceph-client]
+;vm2 ansible_ssh_host_private=172.16.1.87 ansible_ssh_host=172.16.1.87 ansible_host=172.16.1.87 ansible_user=ubuntu ansible_python_interpreter=/usr/bin/python3

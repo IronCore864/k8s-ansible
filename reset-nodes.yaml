@@ -1,0 +1,7 @@
+- name: Reset/prepare master nodes
+  hosts: k8s-node
+  # Can run fully parallel
+  strategy: free
+  become: yes
+  roles:
+  - k8s-node

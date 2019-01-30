@@ -1,0 +1,55 @@
+- name: Upload templated config file
+  template:
+    src: "kubeadm-config.yaml.j2"
+    dest: "~/kubeadm-config.yaml"
+
+- name: Copy required conf file to etcd nodes
+  copy:
+    src: "20-etcd-service-manager.conf"
+    dest: "/etc/systemd/system/kubelet.service.d/20-etcd-service-manager.conf"
+
+- name: Restart kubelet service
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    name: kubelet
+
+- name: Copy required certificate files to etcd nodes
+  copy:
+    src: "{{ hostvars[groups['k8s-initial-etcd-node'][0]].required_files_temp_dir.path }}/pki/etcd/{{ item }}"
+    dest: "/etc/kubernetes/pki/etcd/"
+  with_items:
+  - ca.crt
+  - ca.key
+
+- name: Prepare kubeadm phase 1
+  command: kubeadm alpha phase certs etcd-server --config ~/kubeadm-config.yaml
+
+- name: Prepare kubeadm phase 2
+  command: kubeadm alpha phase certs etcd-peer --config ~/kubeadm-config.yaml
+
+- name: Prepare kubeadm phase 3
+  command: kubeadm alpha phase certs etcd-healthcheck-client --config ~/kubeadm-config.yaml
+
+- name: Prepare kubeadm phase 4
+  command: kubeadm alpha phase certs apiserver-etcd-client --config ~/kubeadm-config.yaml
+
+- name: Generate a static manifest for etcd
+  command: kubeadm alpha phase etcd local --config ~/kubeadm-config.yaml
+
+- name: Copy required etcd client certificate files to local
+  fetch:
+    src: "/etc/kubernetes/pki/{{ item }}"
+    dest: "{{ hostvars[groups['k8s-initial-etcd-node'][0]].required_files_temp_dir.path }}/pki/"
+    flat: yes
+  with_items:
+  - "apiserver-etcd-client.crt"
+  - "apiserver-etcd-client.key"
+  run_once: true
+
+- name: Clear uploaded config files
+  file:
+    state: absent
+    path: "{{ item }}"
+  with_items:
+  - "~/kubeadm-config.yaml"

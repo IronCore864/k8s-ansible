@@ -1,0 +1,17 @@
+- import_playbook: "{{ playbook_dir }}/check-inventory.yaml"
+- import_playbook: "{{ playbook_dir }}/create-additional-host-groups.yaml"
+- import_playbook: "{{ playbook_dir }}/gather-all-host-facts.yaml"
+- import_playbook: "{{ playbook_dir }}/setup-k8s-apiserver-lb.yaml"
+- import_playbook: "{{ playbook_dir }}/reset-nodes.yaml"
+
+- import_playbook: "{{ playbook_dir }}/setup-k8s-initial-etcd-node.yaml"
+  when: external_etcd == true
+
+- import_playbook: "{{ playbook_dir }}/setup-k8s-etcd-node.yaml"
+  when: external_etcd == true
+
+- import_playbook: "{{ playbook_dir }}/setup-k8s-initial-master-node.yaml"
+- import_playbook: "{{ playbook_dir }}/setup-k8s-additional-master-node.yaml"
+- import_playbook: "{{ playbook_dir }}/get-join-command.yaml"
+- import_playbook: "{{ playbook_dir }}/setup-k8s-worker-node.yaml"
+- import_playbook: "{{ playbook_dir }}/get-kubernetes-config-file.yaml"

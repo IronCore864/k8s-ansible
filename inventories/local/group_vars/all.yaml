@@ -1,0 +1,35 @@
+use_virtual_ip: true
+
+# choose a unique virtual router id across k8s clusters
+virtual_router_id: 168
+
+# choose a unique virtual ip address across k8s clusters
+virtual_ip_address: 172.16.1.201
+
+keepalived_version: v2.0.11
+
+# choose a unique range across k8s clusters
+metallb_bgp_address_range: "172.16.4.30-172.16.4.39"
+
+router_ip_address: 172.16.1.4
+router_asn: 65502
+
+# choose a unique ASN across k8s clusters
+metallb_asn: 65539
+
+cni_cidr: "10.217.0.0/16"
+
+external_etcd: false
+
+kubernetes_version: 1.12.4
+kubernetes_cni_apt_version: 0.6.0-00
+ceph_common_apt_version: 13.2.2-1bionic
+
+# See: https://storage.googleapis.com/cri-containerd-release/
+containerd_version: 1.2.2
+
+use_external_ip: false
+lb_port: 443
+api_server_port: 6443
+
+helm_version: 2.12.1

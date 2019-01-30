@@ -1,0 +1,48 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: privileged-psp-users
+subjects:
+# Special Group
+- kind: Group
+  apiGroup: rbac.authorization.k8s.io
+  name: privileged-psp-users
+# System Groups
+- kind: Group
+  apiGroup: rbac.authorization.k8s.io
+  name: system:nodes
+- kind: Group
+  apiGroup: rbac.authorization.k8s.io
+  name: system:masters
+# Allow all service accounts in kube-system
+# TODO: This means kube-scheduler will schedule all pods in all namespaces with privileged
+# We need to decide on the allowed privilege level for users/namespaces
+- kind: Group
+  name: system:serviceaccounts:kube-system
+  apiGroup: rbac.authorization.k8s.io
+- kind: User
+  apiGroup: rbac.authorization.k8s.io
+  name: system:kube-scheduler
+- kind: User
+  apiGroup: rbac.authorization.k8s.io
+  name: system:kube-controller-manager
+- kind: User
+  apiGroup: rbac.authorization.k8s.io
+  name: system:kube-proxy
+- kind: ServiceAccount
+  name: kube-proxy
+  namespace: kube-system
+- kind: ServiceAccount
+  name: cilium
+  namespace: kube-system
+- kind: ServiceAccount
+  name: coredns
+  namespace: kube-system
+## Istio
+- kind: Group
+  name: system:serviceaccounts:istio-system
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: privileged-psp-user

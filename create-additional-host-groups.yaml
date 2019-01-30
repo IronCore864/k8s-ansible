@@ -1,0 +1,32 @@
+- name: Create additional host groups
+  hosts: localhost
+  tasks:
+    - name: Create k8s-apiserver-ha group
+      add_host:
+        name: "{{ item }}"
+        groups: k8s-apiserver-ha
+      with_items:
+        - "{{ groups['k8s-apiserver-lb'] }}"
+        - "{{ groups['k8s-master-node'] }}"
+
+    - name: Create k8s-node group
+      add_host:
+        name: "{{ item }}"
+        groups: k8s-node
+      with_items:
+        - "{{ groups['k8s-master-node'] }}"
+        - "{{ groups['k8s-worker-node'] }}"
+
+    - name: Create k8s-initial-master-node group
+      add_host:
+        name: "{{ groups['k8s-master-node'][0] }}"
+        groups: k8s-initial-master-node
+
+    - name: Create k8s-additional-master-node group
+      add_host:
+        name: "{{ item }}"
+        groups: k8s-additional-master-node
+      with_items: "{{ groups['k8s-master-node'] }}"
+      loop_control:
+        index_var: index
+      when: index != 0

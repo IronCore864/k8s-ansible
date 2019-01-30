@@ -1,0 +1,24 @@
+apiVersion: kubeadm.k8s.io/v1alpha3
+kind: ClusterConfiguration
+apiServerExtraArgs:
+  enable-admission-plugins: NodeRestriction,PodSecurityPolicy
+kubernetesVersion: v{{ kubernetes_version }}
+apiServerCertSANs:
+- "{{ hostvars[groups['k8s-apiserver-lb'][0]].lb_ip }}"
+controlPlaneEndpoint: "{{ hostvars[groups['k8s-apiserver-lb'][0]].lb_ip }}:{{ hostvars[groups['k8s-apiserver-lb'][0]].lb_port }}"
+etcd:
+  external:
+    endpoints:
+{% for host in groups['k8s-etcd-node'] %}
+    - https://{{ hostvars[host].ansible_default_ipv4.address }}:2379
+{% endfor %}
+    caFile: /etc/kubernetes/pki/etcd/ca.crt
+    certFile: /etc/kubernetes/pki/apiserver-etcd-client.crt
+    keyFile: /etc/kubernetes/pki/apiserver-etcd-client.key
+networking:
+  podSubnet: "{{ cni_cidr }}"
+---
+apiVersion: kubeadm.k8s.io/v1alpha3
+kind: InitConfiguration
+nodeRegistration:
+  criSocket: /var/run/containerd/containerd.sock

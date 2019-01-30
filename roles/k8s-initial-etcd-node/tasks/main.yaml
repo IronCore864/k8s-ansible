@@ -1,0 +1,17 @@
+- name: Prepare kubeadm phase 1
+  command: "kubeadm alpha phase certs etcd-ca"
+
+- name: Create temporary directory for required files
+  tempfile:
+    state: directory
+    suffix: etcd
+  register: required_files_temp_dir
+
+- name: Copy required etcd certificate files to local
+  fetch:
+    src: "/etc/kubernetes/pki/etcd/{{ item }}"
+    dest: "{{ required_files_temp_dir.path }}/pki/etcd/"
+    flat: yes
+  with_items:
+  - ca.crt
+  - ca.key

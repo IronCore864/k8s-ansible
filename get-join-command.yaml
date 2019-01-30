@@ -1,0 +1,27 @@
+- name: Get kubernetes config file from master node to local machine
+  hosts: k8s-initial-master-node
+  become: yes
+  tasks:
+  - name: Get join token
+    shell: "kubeadm token --kubeconfig=/etc/kubernetes/admin.conf list | awk '{if (NR==2) print $1 }'"
+    retries: 5
+    delay: 5
+    register: join_token
+    until: join_token.stdout != ''
+
+  # TODO: use https://docs.ansible.com/ansible/2.4/openssl_certificate_module.html
+  - name: Generate CA cert
+    shell: openssl x509 -in /etc/kubernetes/pki/ca.crt -noout -pubkey | openssl rsa -pubin -outform DER 2>/dev/null | sha256sum | cut -d' ' -f1
+    register: join_token_ca_cert
+
+  - name: Save the join command
+    shell: "echo kubeadm join --cri-socket=/var/run/containerd/containerd.sock {{ ansible_default_ipv4.address }}:{{ api_server_port }} --token {{ join_token.stdout }} --discovery-token-ca-cert-hash sha256:{{ join_token_ca_cert.stdout }}"
+    register: join_command_result
+
+  - name: Set the join command as a fact
+    set_fact:
+      join_command: "{{ join_command_result.stdout }}"
+
+  - name: Log join command
+    debug:
+      msg: "Join command will be used: {{ join_command }}"

@@ -1,0 +1,25 @@
+- name: Check if correct version of keepalived is installed
+  command: keepalived --version
+  register: keepalived_version_output
+  ignore_errors: yes
+
+- name: Compile and install keepalived if needed
+  import_tasks: keepalived-build.yaml
+  when: "keepalived_version_output.rc != 0 or ( ( keepalived_version not in keepalived_version_output.stdout ) and ( keepalived_version not in keepalived_version_output.stderr ) )"
+
+- name: Calculate priority
+  set_fact:
+    keepalived_priority: "{{ 100 - groups['k8s-apiserver-lb'].index(inventory_hostname) }}"
+
+- name: Upload templated keepalived config file
+  template:
+    src: "keepalived.conf.j2"
+    dest: "/etc/keepalived/keepalived.conf"
+
+- name: Unmask, start and enable keepalived
+  systemd:
+    masked: no
+    enabled: yes
+    state: restarted
+    daemon_reload: yes
+    name: keepalived

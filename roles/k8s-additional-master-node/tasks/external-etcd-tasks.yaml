@@ -1,0 +1,39 @@
+- name: Copy required etcd certificate file to initial master
+  copy:
+    src: "{{ hostvars[groups['k8s-initial-etcd-node'][0]].required_files_temp_dir.path }}/pki/etcd/ca.crt"
+    dest: /etc/kubernetes/pki/etcd/
+
+- name: Copy required etcd client certificate files to additional masters
+  copy:
+    src: "{{ hostvars[groups['k8s-initial-etcd-node'][0]].required_files_temp_dir.path }}/pki/{{ item }}"
+    dest: /etc/kubernetes/pki/
+  with_items:
+  - apiserver-etcd-client.crt
+  - apiserver-etcd-client.key
+
+- name: Copy required cluster certificate files to additional master
+  copy:
+    src: "{{ hostvars[groups['k8s-initial-master-node'][0]].required_files_temp_dir_ext_etcd.path }}/pki/{{ item }}"
+    dest: /etc/kubernetes/pki/
+  with_items:
+  - "ca.crt"
+  - "ca.key"
+  - "sa.key"
+  - "sa.pub"
+  - "front-proxy-ca.crt"
+  - "front-proxy-ca.key"
+
+- name: Upload templated additional master config file
+  template:
+    src: "external-etcd/kubeadm-config.yaml.j2"
+    dest: "~/kubeadm-config.yaml"
+
+- name: Initialize cluster with kubeadm
+  command: kubeadm init --config ~/kubeadm-config.yaml
+
+- name: Clear uploaded config files
+  file:
+    state: absent
+    path: "{{ item }}"
+  with_items:
+  - "~/kubeadm-config.yaml"

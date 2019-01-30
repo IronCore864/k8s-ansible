@@ -1,0 +1,5 @@
+- name: Setup etcd nodes
+  hosts: k8s-initial-etcd-node
+  become: yes
+  roles:
+  - k8s-initial-etcd-node

@@ -1,0 +1,17 @@
+# Important: Be VERY careful with the executable paths, i.e. "bin" vs "sbin"
+[plugins]
+  [plugins.cri.containerd]
+    snapshotter = "overlayfs"
+    [plugins.cri.containerd.default_runtime]
+      runtime_type = "io.containerd.runtime.v1.linux"
+      runtime_engine = "/usr/local/sbin/runc"
+      runtime_root = ""
+# We disable gVisor for now, since it is unstable & experimental
+#    [plugins.cri.containerd.untrusted_workload_runtime]
+#      runtime_type = "io.containerd.runtime.v1.linux"
+#      runtime_engine = "/usr/local/bin/runsc"
+#      runtime_root = "/run/containerd/runsc"
+#    [plugins.cri.containerd.gvisor]
+#      runtime_type = "io.containerd.runtime.v1.linux"
+#      runtime_engine = "/usr/local/bin/runsc"
+#      runtime_root = "/run/containerd/runsc"

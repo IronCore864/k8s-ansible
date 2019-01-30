@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: metallb-system
+  name: config
+data:
+  config: |
+    peers:
+    - peer-address: {{ router_ip_address }}
+      peer-asn: {{ router_asn }}
+      my-asn: {{ metallb_asn }}
+    address-pools:
+    - name: default
+      protocol: bgp
+      addresses:
+      - "{{ metallb_bgp_address_range }}"

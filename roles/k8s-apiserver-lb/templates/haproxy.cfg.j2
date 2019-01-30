@@ -1,0 +1,17 @@
+frontend k8s-api
+  bind {{ lb_ip }}:{{ lb_port }}
+  mode tcp
+  default_backend k8s-api
+  timeout client 60000ms
+
+backend k8s-api
+  mode tcp
+  option tcp-check
+  balance roundrobin
+  default-server inter 10s downinter 5s rise 2 fall 2 slowstart 60s maxconn 250 maxqueue 256 weight 100
+  server master-1 {{  hostvars[groups['k8s-initial-master-node'][0]].ansible_default_ipv4.address}}:{{ api_server_port }} check
+{% for host in groups['k8s-additional-master-node'] %}
+  server master-{{ loop.index + 1 }} {{ hostvars[host].ansible_default_ipv4.address }}:{{ api_server_port }} check
+{% endfor %}
+  timeout server 120000ms
+  timeout connect 5000ms

@@ -1,0 +1,4 @@
+- name: Gather all facts from all hosts (hostname, ip etc.)
+  hosts: all
+  # Can run fully parallel
+  strategy: free
