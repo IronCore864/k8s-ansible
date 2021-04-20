@@ -1,4 +1,4 @@
-ansible==2.6.1
+ansible==2.9.20
 apache-libcloud==2.3.0
 cffi==1.11.5
 httplib2==0.9.2
